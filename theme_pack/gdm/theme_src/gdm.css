@@ -4704,9 +4704,15 @@ StScrollBar StButton#vhandle:active, StScrollBar StButton#hhandle:active {
   padding: 30px;
 }
 
-/* Obsidian Amber macOS Greeter Overrides */
+
+
+/* ============================================================
+ * Crimson Ruby macOS Greeter Theme Overrides
+ * (Matched to user Pinterest wallpaper & accent)
+ * ============================================================ */
+
 #lockDialogGroup {
-  background-color: #0d0805 !important;
+  background-color: #1a0006 !important;
   background-image: url("resource:///org/gnome/shell/theme/background.png") !important;
   background-repeat: no-repeat !important;
   background-size: cover !important;
@@ -4714,35 +4720,40 @@ StScrollBar StButton#vhandle:active, StScrollBar StButton#hhandle:active {
 }
 
 .login-dialog {
-  background-color: rgba(18, 12, 8, 0.82) !important;
+  background-color: rgba(26, 0, 6, 0.82) !important;
   border-radius: 28px !important;
-  border: 1px solid rgba(215, 200, 151, 0.28) !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(205, 19, 55, 0.38) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(205, 19, 55, 0.22) !important;
   padding: 32px !important;
 }
 
 .login-dialog-prompt-entry {
   background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #f5eee6 !important;
+  color: #fdf5f6 !important;
   border-radius: 20px !important;
-  border: 1px solid rgba(215, 200, 151, 0.35) !important;
+  border: 1px solid rgba(205, 19, 55, 0.45) !important;
   padding: 8px 16px !important;
 }
 
 .login-dialog-prompt-entry:focus {
-  border: 1px solid #c67c0d !important;
-  box-shadow: 0 0 0 2px rgba(198, 124, 13, 0.35) !important;
+  border: 1px solid #cd1337 !important;
+  box-shadow: 0 0 0 2px rgba(205, 19, 55, 0.45) !important;
 }
 
 .login-dialog-button.default-button,
 .login-dialog-button:focus,
 .login-dialog-button.default {
-  background-color: #c67c0d !important;
+  background-color: #cd1337 !important;
   color: #ffffff !important;
   border-radius: 20px !important;
 }
 
 .login-dialog-button:hover {
-  background-color: #e5b869 !important;
-  color: #120c08 !important;
+  background-color: #ff3b5c !important;
+  color: #ffffff !important;
+}
+
+.login-dialog-user-list-item:hover,
+.login-dialog-user-list-item:focus {
+  background-color: rgba(205, 19, 55, 0.28) !important;
 }

@@ -1,7 +1,7 @@
-# Obsidian Amber & Maple Red Customization Suite
-### macOS Ergonomics, Windows 11 Centered Start Menu & QLED Power Animations
+# Obsidian Amber, Maple Red & Developer Power Splash Suite
+### macOS Ergonomics, Windows 11 Start Menu, QLED Optimizations & Developer Identity
 
-A complete, automated UI customization suite designed for **Debian 13 (Trixie) / GNOME 48** with dedicated optimizations for **QLED wide-gamut displays**.
+A complete, automated UI customization suite designed for **Debian 13 (Trixie) / GNOME 48** with dedicated optimizations for **QLED wide-gamut displays** and **Software Developers**.
 
 Zero manual git cloning or file hunting required.
 
@@ -11,20 +11,20 @@ Zero manual git cloning or file hunting required.
 
 | Component | Theme & Style | Palette |
 | :--- | :--- | :--- |
-| **Power On / GRUB** | Minimal Silent Bootloader with Custom Theme | Radiant **Maple Red** (`#99141e`) to **Pure Deep Black** (`#000000`) |
-| **Powering Up / Off** | Plymouth Splash Animation (Boot & Shutdown) | Fluid 32-bit ARGB **Glowing Maple Comet Ring** on Pure Black |
-| **Login Screen (GDM)** | macOS Sequoia Frosted Glass Card | Custom Wallpaper ([Hero_Banner_MLM.avif](file:///home/joseph/Desktop/grub_modify/Hero_Banner_MLM.avif)) + Amber Accents |
+| **Power On / GRUB** | Native-Resolution Bootloader with Maple Wallpaper | Radiant **Maple Red** (`#99141e`) to **Pure Deep Black** (`#000000`) |
+| **Powering Up / Off** | 180x180 Animated Cyber-Developer Core + Blinking Terminal Title | **Vibrant Maple Red & Crimson Gold (`#ff3b30` / `#ffeaa7`)** on Pure Black |
+| **Login Screen (GDM)** | macOS Frosted Glass Card + Pinterest Wallpaper | **Crimson Ruby (`#cd1337`)** Accent & Focus Rings |
 | **Desktop Environment** | macOS Floating Dock + Top Bar Blur | Obsidian Amber (`#0e0906`, `#c67c0d`, `#e5b869`) |
 | **Start Menu** | Windows 11 Centered Layout + macOS Frosted Glass | ArcMenu 11 with 22px curvature & pill search |
 
 ---
 
-## 📺 QLED Display Optimization
+## 💻 Software Developer Power-On Splash
 
-This suite is crafted specifically for high-contrast **Quantum Dot LED (QLED)** and OLED laptop panels:
-1. **Pure True Blacks (`#000000`)**: The boot and shutdown screens fade into true zero-nit black, enabling local dimming backlights to turn completely off for infinite contrast and zero backlight bleed.
-2. **Wide Color Gamut (DCI-P3)**: High-chroma saturated Maple Red (`#ff3b30`, `#e61e2b`, `#99141e`) takes full advantage of Quantum Dot color vibrancy.
-3. **Smooth Anti-Banding**: Gradients and vector animations are pre-rendered with silky smooth 16-bit color channels and hardware anti-aliasing via Cairo.
+The power-on animation features a full developer identity design:
+1. **180x180 Cyber Developer Core**: Outer rotating tech HUD ring with tick-marks and inner counter-rotating fluid comet trail, centered with a glowing `>_` terminal prompt.
+2. **Animated Developer Title Badge**: A frosted terminal badge displaying `>_ [YOUR_TITLE]` with a live blinking Unix terminal cursor (`█`).
+3. **Offline Update Progress Display**: Implements `Plymouth.SetUpdateStatusFunction` and `Plymouth.SetMessageFunction` so system updates (e.g., "INSTALLING UPDATES: 45%...") and disk check messages are displayed cleanly in monospace tech typography.
 
 ---
 
@@ -55,13 +55,15 @@ This suite is crafted specifically for high-contrast **Quantum Dot LED (QLED)** 
 ```
 
 ### 2. Apply Maple Red Power Splash, Silent Boot & Login Screen (Requires Sudo)
+You can enter your custom title interactively or pass it via `--title`:
 ```bash
-sudo ./setup_startup_and_login.sh
+sudo ./setup_startup_and_login.sh --title "JOSEPH // SOFTWARE ARCHITECT"
 ```
+*(If run without `--title`, the script prompts you to enter your title)*
 
 ### 3. Master One-Shot Installer (Runs Both Steps)
 ```bash
-./install_all.sh
+./install_all.sh --title "JOSEPH // SOFTWARE ARCHITECT"
 ```
 
 ### 4. Restore Factory Settings
@@ -74,14 +76,11 @@ sudo ./setup_startup_and_login.sh --restore
 
 ## 📦 Pushing to Your GitHub
 
-This repository is already initialized with all assets and ready to push to your GitHub account:
+This repository is initialized with all assets and ready to push to your GitHub account:
 
 ```bash
-# 1. Create a new repository on GitHub (e.g., 'grub-desktop-customizer')
-# 2. Link your remote (HTTPS or SSH):
+cd /home/joseph/Desktop/grub_modify
 git remote add origin https://github.com/gatirijose/grub-desktop-customizer.git
-
-# 3. Push your main branch:
 git branch -M main
 git push -u origin main
 ```

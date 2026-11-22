@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Obsidian Amber & macOS - Startup UI, Silent Boot & Login Page Setup
-# Modifies GRUB, Plymouth (Silent Startup UI), and GDM (Login Screen)
+# Obsidian Amber & Maple Red - Startup UI, Silent Boot & Login Page Setup
+# QLED-Optimized: Maple Red Power Splash & Developer Terminal Animation
 # ==============================================================================
 set -e
 
@@ -13,10 +13,6 @@ if [ "$EUID" -ne 0 ]; then
   echo "==> Requesting administrator privileges to update bootloader and login UI..."
   exec sudo "$0" "$@"
 fi
-
-echo "============================================================"
-echo " Starting System Startup UI & Login Page Customization"
-echo "============================================================"
 
 # Check for restore option
 if [ "$1" = "--restore" ]; then
@@ -33,13 +29,49 @@ if [ "$1" = "--restore" ]; then
   exit 0
 fi
 
+# Parse Developer Title parameter
+TITLE=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -t|--title)
+      TITLE="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$TITLE" ]; then
+  if [ -t 0 ]; then
+    echo ""
+    echo "============================================================"
+    echo "  SOFTWARE DEVELOPER SPLASH CUSTOMIZATION"
+    echo "============================================================"
+    read -p "Enter Developer Title for power-on splash [Default: JOSEPH // SOFTWARE DEVELOPER]: " INPUT_TITLE
+    TITLE="${INPUT_TITLE:-JOSEPH // SOFTWARE DEVELOPER}"
+  else
+    TITLE="JOSEPH // SOFTWARE DEVELOPER"
+  fi
+fi
+
+echo "============================================================"
+echo " Starting System Startup UI & Login Page Customization"
+echo " Developer Title: $TITLE"
+echo "============================================================"
+
 # 1. Backups
-echo "==> [1/4] Creating backups of current configuration..."
+echo "==> [1/5] Creating backups of current configuration..."
 [ ! -f /etc/default/grub.bak ] && cp /etc/default/grub /etc/default/grub.bak
 [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak ] && cp /usr/share/gnome-shell/gnome-shell-theme.gresource /usr/share/gnome-shell/gnome-shell-theme.gresource.bak
 
-# 2. Plymouth Startup UI
-echo "==> [2/4] Installing Obsidian Amber Plymouth Theme (Silent Startup Animation)..."
+# 2. Generate Developer Animation Frames
+echo "==> [2/5] Rendering animated Developer Title badge with blinking cursor..."
+python3 "$THEME_PACK/plymouth/generate_title.py" "$TITLE" "$THEME_PACK/plymouth"
+
+# 3. Plymouth Startup UI
+echo "==> [3/5] Installing QLED Maple Red Plymouth Theme (Developer Core + Offline Updates)..."
 mkdir -p /usr/share/plymouth/themes/obsidian-amber
 cp -r "$THEME_PACK/plymouth/"* /usr/share/plymouth/themes/obsidian-amber/
 chmod 644 /usr/share/plymouth/themes/obsidian-amber/*
@@ -49,12 +81,11 @@ chmod 755 /usr/share/plymouth/themes/obsidian-amber
 echo "==> Updating initramfs with new splash theme..."
 plymouth-set-default-theme obsidian-amber -R
 
-# 3. GRUB Silent Boot & Theming
-echo "==> [3/4] Configuring GRUB Silent Boot & Custom Wallpaper..."
+# 4. GRUB Silent Boot & Theming (Maple Red to Black Gradient)
+echo "==> [4/5] Configuring GRUB with Maple Red Gradient Wallpaper..."
 mkdir -p /boot/grub/themes/obsidian-amber
 cp -r "$THEME_PACK/grub/"* /boot/grub/themes/obsidian-amber/
 
-# Update /etc/default/grub for completely silent boot and stylish background
 python3 -c "
 with open('/etc/default/grub', 'r') as f:
     lines = f.readlines()
@@ -66,7 +97,7 @@ for line in lines:
         continue
     new_lines.append(line)
 
-new_lines.append('\n# Obsidian Amber Silent Boot Configuration\n')
+new_lines.append('\n# Obsidian Amber & Maple Red Silent Boot Configuration\n')
 new_lines.append('GRUB_CMDLINE_LINUX_DEFAULT=\"quiet splash loglevel=3 rd.udev.log_priority=3 vt.global_cursor_default=0 systemd.show_status=auto\"\n')
 new_lines.append('GRUB_THEME=\"/boot/grub/themes/obsidian-amber/theme.txt\"\n')
 new_lines.append('GRUB_BACKGROUND=\"/boot/grub/themes/obsidian-amber/background.png\"\n')
@@ -79,28 +110,29 @@ with open('/etc/default/grub', 'w') as f:
 
 # Also update desktop-base active grub wallpaper if linked
 if [ -d /usr/share/images/desktop-base ]; then
-  cp "$THEME_PACK/wallpaper/wallpaper.png" /usr/share/images/desktop-base/desktop-grub.png 2>/dev/null || true
+  cp "$THEME_PACK/grub/background.png" /usr/share/images/desktop-base/desktop-grub.png 2>/dev/null || true
 fi
 
 echo "==> Regenerating GRUB bootloader configuration..."
 update-grub
 
-# 4. GDM Login Page Customization
-echo "==> [4/4] Installing Custom GDM Login Screen..."
+# 5. GDM Login Page Customization (Pinterest Wallpaper + Crimson Ruby Accent)
+echo "==> [5/5] Installing Custom GDM Login Screen (Pinterest Wallpaper & Crimson Ruby Accent)..."
 cp "$THEME_PACK/gdm/gnome-shell-theme.gresource" /usr/share/gnome-shell/gnome-shell-theme.gresource
 chmod 644 /usr/share/gnome-shell/gnome-shell-theme.gresource
 
 # Also place fallback wallpapers for desktop-base greeters
 if [ -d /usr/share/desktop-base/active-theme/login ]; then
-  magick "$THEME_PACK/wallpaper/wallpaper.png" -resize 1920x1080 /usr/share/desktop-base/active-theme/login/background.svg 2>/dev/null || true
+  magick "$THEME_PACK/wallpaper/login_background.png" -resize 1920x1080 /usr/share/desktop-base/active-theme/login/background.svg 2>/dev/null || true
 fi
 
 echo "============================================================"
-echo " ALL DONE! Startup UI, Silent Boot & Login Page Installed!"
+echo " ALL DONE! Startup UI, Developer Splash & Login Installed!"
 echo "============================================================"
 echo "Summary of applied changes:"
-echo " 1. Silent boot enabled (no text logging during boot)"
-echo " 2. Plymouth animated golden glowing boot splash active"
-echo " 3. GRUB theme with native resolution and custom background active"
-echo " 4. GDM Login Page styled with Obsidian Amber wallpaper and frosted glass dialog"
+echo " 1. GRUB Menu Wallpaper: Maple Red to Pure Black Gradient active"
+echo " 2. Power-on Animation: 180x180 Developer Core (>_ terminal prompt + HUD ring)"
+echo " 3. Developer Title Badge: \"$TITLE\" with animated blinking cursor"
+echo " 4. Offline Update Progress: System messages and update status visible"
+echo " 5. GDM Login Screen: Pinterest wallpaper + matching Crimson Ruby accent"
 echo "============================================================"

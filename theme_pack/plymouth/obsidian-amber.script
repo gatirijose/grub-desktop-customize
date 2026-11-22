@@ -1,5 +1,10 @@
-# Maple Red to Pure Black - QLED Power Splash & Silent Boot
-# Optimized for high-contrast QLED / OLED displays
+# Maple Red to Pure Black - QLED Developer Power Splash & Silent Boot
+# Features:
+#  - 180x180 Animated Cyber-Developer Core (>_ prompt + HUD ring + fluid comet)
+#  - Dynamic Developer Title Badge with Blinking Unix Terminal Cursor
+#  - Full Offline Update & System Message text handler (SetMessageFunction & SetUpdateStatusFunction)
+#  - Graceful shutdown fade to pure black
+#  - Encrypted drive unlock dialog
 
 screen.width = Window.GetWidth();
 screen.height = Window.GetHeight();
@@ -23,7 +28,7 @@ bg_sprite.SetZ(-100);
 # 2. Boot Mode Detection (Boot vs Shutdown / Reboot)
 mode = Plymouth.GetMode();
 
-# 3. Animation Frames Setup
+# 3. Developer Animation Core (180x180)
 for (i = 0; i < 36; i++) {
   spinner_images[i] = Image("spinner-" + i + ".png");
 }
@@ -31,30 +36,75 @@ for (i = 0; i < 36; i++) {
 spinner_w = spinner_images[0].GetWidth();
 spinner_h = spinner_images[0].GetHeight();
 spinner_sprite = Sprite(spinner_images[0]);
-spinner_sprite.SetPosition((screen.width - spinner_w) / 2, (screen.height * 0.70) - (spinner_h / 2));
+spinner_y = (screen.height * 0.42) - (spinner_h / 2);
+spinner_sprite.SetPosition((screen.width - spinner_w) / 2, spinner_y);
 spinner_sprite.SetZ(10);
+
+# 4. Developer Title Badge with Blinking Terminal Cursor
+title_images = [];
+for (i = 0; i < 36; i++) {
+  title_images[i] = Image("title-" + i + ".png");
+}
+
+title_w = title_images[0].GetWidth();
+title_h = title_images[0].GetHeight();
+title_sprite = Sprite(title_images[0]);
+title_y = spinner_y + spinner_h + 20;
+title_sprite.SetPosition((screen.width - title_w) / 2, title_y);
+title_sprite.SetZ(12);
 
 frame_index = 0;
 fade_out_step = 1.0;
 
 fun refresh_callback () {
+  frame_index = (frame_index + 1) % 36;
+
   if (mode == "shutdown" || mode == "reboot") {
     # Powering down: gentle pulse and graceful fade to deep black
-    frame_index = (frame_index + 1) % 36;
     spinner_sprite.SetImage(spinner_images[frame_index]);
-    fade_out_step = fade_out_step - 0.005;
-    if (fade_out_step < 0.2) fade_out_step = 0.2;
+    title_sprite.SetImage(title_images[frame_index]);
+    fade_out_step = fade_out_step - 0.006;
+    if (fade_out_step < 0.15) fade_out_step = 0.15;
     spinner_sprite.SetOpacity(fade_out_step);
+    title_sprite.SetOpacity(fade_out_step);
   } else {
-    # Powering up: energetic rotating glowing maple comet
-    frame_index = (frame_index + 1) % 36;
+    # Powering up: energetic rotating cyber-developer core & blinking terminal cursor
     spinner_sprite.SetImage(spinner_images[frame_index]);
+    title_sprite.SetImage(title_images[frame_index]);
   }
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
 
-# 4. Password Box Handling (Encrypted Drive Unlock)
+# 5. System Messages & Offline Update Handler (Installing Updates...)
+message_sprite = NULL;
+status_sprite = NULL;
+
+fun message_callback (text) {
+  # Clean monospace tech display for system messages (fsck, system updates, etc.)
+  msg_image = Image.Text(text, 1.0, 0.90, 0.90, 1.0, "Monospace Bold 12");
+  if (!message_sprite)
+    message_sprite = Sprite();
+  message_sprite.SetImage(msg_image);
+  message_sprite.SetPosition((screen.width - msg_image.GetWidth()) / 2, title_y + title_h + 18);
+  message_sprite.SetZ(15);
+}
+
+fun update_status_callback (status) {
+  # Dedicated handler for PackageKit / systemd offline updates
+  display_text = "INSTALLING UPDATES: " + status;
+  upd_image = Image.Text(display_text, 1.0, 0.35, 0.45, 1.0, "Monospace Bold 12");
+  if (!status_sprite)
+    status_sprite = Sprite();
+  status_sprite.SetImage(upd_image);
+  status_sprite.SetPosition((screen.width - upd_image.GetWidth()) / 2, title_y + title_h + 18);
+  status_sprite.SetZ(16);
+}
+
+Plymouth.SetMessageFunction(message_callback);
+Plymouth.SetUpdateStatusFunction(update_status_callback);
+
+# 6. Password Box Handling (Encrypted Drive Unlock)
 box_image = Image("box.png");
 lock_image = Image("lock.png");
 bullet_image = Image("bullet.png");
@@ -65,14 +115,15 @@ bullet_sprites = [];
 
 fun display_password_callback (prompt, bullets) {
   spinner_sprite.SetOpacity(0);
+  title_sprite.SetOpacity(0);
 
   if (!box_sprite) {
     box_sprite = Sprite(box_image);
-    box_sprite.SetPosition((screen.width - box_image.GetWidth()) / 2, (screen.height * 0.70) - (box_image.GetHeight() / 2));
+    box_sprite.SetPosition((screen.width - box_image.GetWidth()) / 2, spinner_y + 40);
     box_sprite.SetZ(20);
 
     lock_sprite = Sprite(lock_image);
-    lock_sprite.SetPosition(((screen.width - box_image.GetWidth()) / 2) + 14, (screen.height * 0.70) - (lock_image.GetHeight() / 2));
+    lock_sprite.SetPosition(((screen.width - box_image.GetWidth()) / 2) + 14, spinner_y + 40 + (box_image.GetHeight() - lock_image.GetHeight()) / 2);
     lock_sprite.SetZ(21);
   } else {
     box_sprite.SetOpacity(1);
@@ -87,7 +138,7 @@ fun display_password_callback (prompt, bullets) {
   start_x = ((screen.width - box_image.GetWidth()) / 2) + 48;
   for (i = 0; i < bullets && i < 16; i++) {
     bullet_sprites[i] = Sprite(bullet_image);
-    bullet_sprites[i].SetPosition(start_x + (i * 14), (screen.height * 0.70) - (bullet_image.GetHeight() / 2));
+    bullet_sprites[i].SetPosition(start_x + (i * 14), spinner_y + 40 + (box_image.GetHeight() - bullet_image.GetHeight()) / 2);
     bullet_sprites[i].SetZ(22);
   }
 }
@@ -102,6 +153,7 @@ fun display_normal_callback () {
   }
   bullet_sprites = [];
   spinner_sprite.SetOpacity(1);
+  title_sprite.SetOpacity(1);
 }
 
 Plymouth.SetDisplayPasswordFunction(display_password_callback);
@@ -110,6 +162,9 @@ Plymouth.SetDisplayNormalFunction(display_normal_callback);
 fun quit_callback () {
   bg_sprite.SetOpacity(0);
   spinner_sprite.SetOpacity(0);
+  title_sprite.SetOpacity(0);
+  if (message_sprite) message_sprite.SetOpacity(0);
+  if (status_sprite) status_sprite.SetOpacity(0);
 }
 
 Plymouth.SetQuitFunction(quit_callback);
