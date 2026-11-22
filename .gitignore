@@ -1,0 +1,10 @@
+# Caches & Temporary Files
+*.bak
+*.tmp
+*.swp
+*~
+__pycache__/
+.DS_Store
+
+# Large build caches
+/tmp/

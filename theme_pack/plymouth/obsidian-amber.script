@@ -1,0 +1,115 @@
+# Maple Red to Pure Black - QLED Power Splash & Silent Boot
+# Optimized for high-contrast QLED / OLED displays
+
+screen.width = Window.GetWidth();
+screen.height = Window.GetHeight();
+
+# 1. Gradient Background (Maple Red to Pure Black)
+bg_image = Image("background.png");
+bg_scale_x = screen.width / bg_image.GetWidth();
+bg_scale_y = screen.height / bg_image.GetHeight();
+
+if (bg_scale_x > bg_scale_y)
+  scale = bg_scale_x;
+else
+  scale = bg_scale_y;
+
+scaled_bg = bg_image.Scale(bg_image.GetWidth() * scale, bg_image.GetHeight() * scale);
+bg_sprite = Sprite(scaled_bg);
+bg_sprite.SetX((screen.width - scaled_bg.GetWidth()) / 2);
+bg_sprite.SetY((screen.height - scaled_bg.GetHeight()) / 2);
+bg_sprite.SetZ(-100);
+
+# 2. Boot Mode Detection (Boot vs Shutdown / Reboot)
+mode = Plymouth.GetMode();
+
+# 3. Animation Frames Setup
+for (i = 0; i < 36; i++) {
+  spinner_images[i] = Image("spinner-" + i + ".png");
+}
+
+spinner_w = spinner_images[0].GetWidth();
+spinner_h = spinner_images[0].GetHeight();
+spinner_sprite = Sprite(spinner_images[0]);
+spinner_sprite.SetPosition((screen.width - spinner_w) / 2, (screen.height * 0.70) - (spinner_h / 2));
+spinner_sprite.SetZ(10);
+
+frame_index = 0;
+fade_out_step = 1.0;
+
+fun refresh_callback () {
+  if (mode == "shutdown" || mode == "reboot") {
+    # Powering down: gentle pulse and graceful fade to deep black
+    frame_index = (frame_index + 1) % 36;
+    spinner_sprite.SetImage(spinner_images[frame_index]);
+    fade_out_step = fade_out_step - 0.005;
+    if (fade_out_step < 0.2) fade_out_step = 0.2;
+    spinner_sprite.SetOpacity(fade_out_step);
+  } else {
+    # Powering up: energetic rotating glowing maple comet
+    frame_index = (frame_index + 1) % 36;
+    spinner_sprite.SetImage(spinner_images[frame_index]);
+  }
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# 4. Password Box Handling (Encrypted Drive Unlock)
+box_image = Image("box.png");
+lock_image = Image("lock.png");
+bullet_image = Image("bullet.png");
+
+box_sprite = NULL;
+lock_sprite = NULL;
+bullet_sprites = [];
+
+fun display_password_callback (prompt, bullets) {
+  spinner_sprite.SetOpacity(0);
+
+  if (!box_sprite) {
+    box_sprite = Sprite(box_image);
+    box_sprite.SetPosition((screen.width - box_image.GetWidth()) / 2, (screen.height * 0.70) - (box_image.GetHeight() / 2));
+    box_sprite.SetZ(20);
+
+    lock_sprite = Sprite(lock_image);
+    lock_sprite.SetPosition(((screen.width - box_image.GetWidth()) / 2) + 14, (screen.height * 0.70) - (lock_image.GetHeight() / 2));
+    lock_sprite.SetZ(21);
+  } else {
+    box_sprite.SetOpacity(1);
+    lock_sprite.SetOpacity(1);
+  }
+
+  for (i = 0; bullet_sprites[i]; i++) {
+    bullet_sprites[i].SetOpacity(0);
+  }
+  bullet_sprites = [];
+
+  start_x = ((screen.width - box_image.GetWidth()) / 2) + 48;
+  for (i = 0; i < bullets && i < 16; i++) {
+    bullet_sprites[i] = Sprite(bullet_image);
+    bullet_sprites[i].SetPosition(start_x + (i * 14), (screen.height * 0.70) - (bullet_image.GetHeight() / 2));
+    bullet_sprites[i].SetZ(22);
+  }
+}
+
+fun display_normal_callback () {
+  if (box_sprite) {
+    box_sprite.SetOpacity(0);
+    lock_sprite.SetOpacity(0);
+  }
+  for (i = 0; bullet_sprites[i]; i++) {
+    bullet_sprites[i].SetOpacity(0);
+  }
+  bullet_sprites = [];
+  spinner_sprite.SetOpacity(1);
+}
+
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+fun quit_callback () {
+  bg_sprite.SetOpacity(0);
+  spinner_sprite.SetOpacity(0);
+}
+
+Plymouth.SetQuitFunction(quit_callback);

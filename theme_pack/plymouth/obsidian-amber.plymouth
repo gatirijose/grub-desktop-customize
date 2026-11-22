@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Obsidian Amber MacOS Boot
+Description=Sleek silent boot theme matching the Obsidian Amber wallpaper
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/obsidian-amber
+ScriptFile=/usr/share/plymouth/themes/obsidian-amber/obsidian-amber.script

@@ -1,0 +1,19 @@
+# Maple Red & Pure Black GRUB Theme (QLED Optimized)
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "#000000"
+
++ boot_menu {
+  left = 28%
+  top = 36%
+  width = 44%
+  height = 42%
+  item_color = "#e59b9f"
+  selected_item_color = "#ffffff"
+  item_font = "DejaVu Sans Bold 14"
+  selected_item_font = "DejaVu Sans Bold 14"
+  item_height = 38
+  item_padding = 8
+  item_spacing = 8
+  selected_item_pixmap_style = "select_*.png"
+}
