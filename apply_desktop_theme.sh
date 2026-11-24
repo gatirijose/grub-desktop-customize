@@ -6,12 +6,53 @@
 # ==============================================================================
 set -e
 
+DCONF_BIN=$(command -v dconf || true)
+dconf() {
+  if [ -n "$DCONF_BIN" ]; then
+    "$DCONF_BIN" "$@" 2>/dev/null || true
+  fi
+}
+
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+  TARGET_USER="$SUDO_USER"
+  TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+  TARGET_UID=$(id -u "$TARGET_USER")
+  TARGET_DBUS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$TARGET_UID/bus}"
+  echo "==> Running desktop theme setup as $TARGET_USER (not root)..."
+  exec runuser -u "$TARGET_USER" -- env \
+    HOME="$TARGET_HOME" \
+    USER="$TARGET_USER" \
+    LOGNAME="$TARGET_USER" \
+    XDG_RUNTIME_DIR="/run/user/$TARGET_UID" \
+    DBUS_SESSION_BUS_ADDRESS="$TARGET_DBUS" \
+    bash "$0" "$@"
+fi
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEME_PACK="$DIR/theme_pack"
 
 echo "========================================================================"
 echo " Applying macOS Tahoe Interface & Nautilus UI"
 echo "========================================================================"
+
+for command_name in git dconf gsettings; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: Required desktop command '$command_name' is not installed." >&2
+    if [ -r /etc/os-release ]; then
+      . /etc/os-release
+      if [ "${ID:-}" = "arch" ] || [[ " ${ID_LIKE:-} " == *" arch "* ]]; then
+        echo "Install it with: sudo pacman -S git dconf imagemagick" >&2
+      elif [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ] || [[ " ${ID_LIKE:-} " == *" debian "* ]]; then
+        echo "Install it with: sudo apt-get install git dconf-cli imagemagick" >&2
+      fi
+    fi
+    exit 1
+  fi
+done
+
+if [ -n "${XDG_CURRENT_DESKTOP:-}" ] && [[ " ${XDG_CURRENT_DESKTOP^^} " != *" GNOME "* ]]; then
+  echo "NOTE: This suite is designed for GNOME. Continuing where supported." >&2
+fi
 
 # ------------------------------------------------------------------------------
 # 1. Verify / Install MacTahoe GTK Theme (Orange variant, standard/normal colors)

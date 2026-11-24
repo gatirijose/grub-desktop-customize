@@ -25,10 +25,17 @@ fi
 if [ "${ID:-}" = "arch" ] || [[ " ${ID_LIKE:-} " == *" arch "* ]]; then
   DISTRO_FAMILY="arch"
   GRUB_CONFIG_GENERATOR="grub-mkconfig"
-  GRUB_CONFIG_PATH="/boot/grub/grub.cfg"
+  if [ -f /boot/grub/grub.cfg ]; then
+    GRUB_CONFIG_PATH="/boot/grub/grub.cfg"
+  elif [ -f /boot/grub.cfg ]; then
+    GRUB_CONFIG_PATH="/boot/grub.cfg"
+  else
+    GRUB_CONFIG_PATH="/boot/grub/grub.cfg"
+  fi
 elif [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ] || [[ " ${ID_LIKE:-} " == *" debian "* ]]; then
   DISTRO_FAMILY="debian"
   GRUB_CONFIG_GENERATOR="update-grub"
+  GRUB_CONFIG_PATH=""
 else
   echo "ERROR: This script supports Arch Linux and Debian/Ubuntu systems only." >&2
   echo "Detected distribution: ${PRETTY_NAME:-${ID:-unknown}}" >&2
@@ -69,6 +76,15 @@ for command_name in python3 plymouth-set-default-theme "$GRUB_CONFIG_GENERATOR";
   fi
 done
 
+if ! python3 -c 'import cairo' >/dev/null 2>&1; then
+  if [ "$DISTRO_FAMILY" = "arch" ]; then
+    echo "ERROR: Python Cairo support is missing. Install it with: sudo pacman -S python-cairo" >&2
+  else
+    echo "ERROR: Python Cairo support is missing. Install it with: sudo apt-get install python3-cairo" >&2
+  fi
+  exit 1
+fi
+
 if [ ! -f /etc/default/grub ] || [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource ]; then
   echo "ERROR: GRUB and GNOME Shell system files were not found." >&2
   echo "Install and configure GRUB and GNOME Shell before running this script." >&2
@@ -80,9 +96,34 @@ if [ "$DISTRO_FAMILY" = "arch" ]; then
     echo "ERROR: Required command 'mkinitcpio' is not installed." >&2
     exit 1
   fi
-  if [ ! -f /etc/mkinitcpio.conf ] || ! grep -Eq '^[[:space:]]*HOOKS=.*([[:space:]]|")plymouth([[:space:]]|")' /etc/mkinitcpio.conf; then
-    echo "ERROR: Arch Linux needs the 'plymouth' hook in /etc/mkinitcpio.conf." >&2
-    echo "Add it to HOOKS (after udev), then run this script again." >&2
+  if [ -f /etc/mkinitcpio.conf ] && ! grep -Eq '^[[:space:]]*HOOKS=.*([[:space:]]|"|^)plymouth([[:space:]]|"|$)' /etc/mkinitcpio.conf; then
+    [ ! -f /etc/mkinitcpio.conf.bak ] && cp /etc/mkinitcpio.conf /etc/mkinitcpio.conf.bak
+    python3 - <<'PY'
+from pathlib import Path
+import re
+
+path = Path('/etc/mkinitcpio.conf')
+text = path.read_text()
+lines = text.splitlines()
+for i, line in enumerate(lines):
+    if re.match(r'^\s*HOOKS=', line) and not re.search(r'\bplymouth\b', line):
+        if ' udev ' in f' {line} ':
+            line = line.replace(' udev ', ' udev plymouth ', 1)
+        elif 'udev ' in line:
+            line = line.replace('udev ', 'udev plymouth ', 1)
+        elif 'base ' in line:
+            line = line.replace('base ', 'base plymouth ', 1)
+        else:
+            line = re.sub(r'(HOOKS=\(?")', r'\1plymouth ', line, count=1)
+        lines[i] = line
+        break
+else:
+    raise SystemExit('ERROR: Could not find the HOOKS line in /etc/mkinitcpio.conf.')
+path.write_text('\n'.join(lines) + '\n')
+PY
+    echo "==> Added 'plymouth' to the Arch Linux mkinitcpio HOOKS array."
+  elif [ ! -f /etc/mkinitcpio.conf ]; then
+    echo "ERROR: /etc/mkinitcpio.conf was not found." >&2
     exit 1
   fi
 fi
@@ -147,6 +188,11 @@ chmod 755 /usr/share/plymouth/themes/obsidian-amber
 # Force Plymouth to our theme (overriding any other theme that was set)
 echo "==> Setting Plymouth default to obsidian-amber..."
 plymouth-set-default-theme obsidian-amber -R
+
+if [ "$DISTRO_FAMILY" = "arch" ]; then
+  echo "==> Regenerating Arch Linux initramfs with mkinitcpio..."
+  mkinitcpio -P
+fi
 
 # 4. GRUB Silent Boot with Maple Red Gradient Wallpaper
 echo "==> [4/5] Configuring GRUB with Maple Red Gradient Wallpaper..."
