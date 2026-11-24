@@ -17,3 +17,14 @@ desktop-color: "#000000"
   item_spacing = 8
   selected_item_pixmap_style = "select_*.png"
 }
+
++ progress_bar {
+  id = "__timeout__"
+  left = 35%
+  top = 85%
+  width = 30%
+  height = 4
+  show_text = false
+  bg_color = "#1a0006"
+  fg_color = "#cd1337"
+}

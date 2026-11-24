@@ -1,0 +1,81 @@
+# macOS Tahoe Boot Splash
+# Pure black background, centered Apple logo, sleek progress bar
+
+screen.width = Window.GetWidth();
+screen.height = Window.GetHeight();
+
+# 1. Pure black background
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+# 2. Apple Logo (128x128)
+logo_image = Image("logo.png");
+logo_w = logo_image.GetWidth();
+logo_h = logo_image.GetHeight();
+logo_sprite = Sprite(logo_image);
+logo_x = (screen.width - logo_w) / 2;
+logo_y = (screen.height - logo_h) / 2 - 30;
+logo_sprite.SetPosition(logo_x, logo_y);
+logo_sprite.SetZ(10);
+
+# 3. macOS Progress Bar
+bar_bg_image = Image("progress_bg.png");
+bar_fill_image = Image("progress_fill.png");
+bar_w = bar_bg_image.GetWidth();
+bar_h = bar_bg_image.GetHeight();
+
+bar_bg_sprite = Sprite(bar_bg_image);
+bar_x = (screen.width - bar_w) / 2;
+bar_y = logo_y + logo_h + 40;
+bar_bg_sprite.SetPosition(bar_x, bar_y);
+bar_bg_sprite.SetZ(11);
+
+bar_fill_sprite = Sprite();
+bar_fill_sprite.SetPosition(bar_x, bar_y);
+bar_fill_sprite.SetZ(12);
+
+# Progress simulation & tracker
+progress_val = 0.0;
+mode = Plymouth.GetMode();
+
+fun boot_progress_callback (duration, progress) {
+  if (progress > progress_val) {
+    progress_val = progress;
+  } else {
+    progress_val = progress_val + 0.005;
+  }
+  if (progress_val > 1.0) progress_val = 1.0;
+
+  cur_w = Math.Int(bar_w * progress_val);
+  if (cur_w < 1) cur_w = 1;
+  
+  cropped_fill = bar_fill_image.Crop(0, 0, cur_w, bar_h);
+  bar_fill_sprite.SetImage(cropped_fill);
+}
+
+fun refresh_callback () {
+  if (mode == "shutdown" || mode == "reboot") {
+    bar_bg_sprite.SetOpacity(0);
+    bar_fill_sprite.SetOpacity(0);
+  } else {
+    if (progress_val < 0.95) {
+      progress_val = progress_val + 0.006;
+      cur_w = Math.Int(bar_w * progress_val);
+      if (cur_w < 1) cur_w = 1;
+      cropped_fill = bar_fill_image.Crop(0, 0, cur_w, bar_h);
+      bar_fill_sprite.SetImage(cropped_fill);
+    }
+  }
+}
+
+Plymouth.SetBootProgressFunction(boot_progress_callback);
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# Clean quit
+fun quit_callback () {
+  logo_sprite.SetOpacity(0);
+  bar_bg_sprite.SetOpacity(0);
+  bar_fill_sprite.SetOpacity(0);
+}
+
+Plymouth.SetQuitFunction(quit_callback);

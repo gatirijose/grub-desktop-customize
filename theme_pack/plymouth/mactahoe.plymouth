@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=macOS Tahoe
+Description=Clean authentic macOS Tahoe Boot Splash with Apple Logo and Progress Bar
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/mactahoe
+ScriptFile=/usr/share/plymouth/themes/mactahoe/mactahoe.script

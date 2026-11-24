@@ -61,7 +61,7 @@ echo " Starting System Startup UI & Login Page Customization"
 echo " Developer Title: $TITLE"
 echo "============================================================"
 
-# 1. Backups
+# 1. Backups (only once, never overwrite existing backup)
 echo "==> [1/5] Creating backups of current configuration..."
 [ ! -f /etc/default/grub.bak ] && cp /etc/default/grub /etc/default/grub.bak
 [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak ] && cp /usr/share/gnome-shell/gnome-shell-theme.gresource /usr/share/gnome-shell/gnome-shell-theme.gresource.bak
@@ -70,34 +70,48 @@ echo "==> [1/5] Creating backups of current configuration..."
 echo "==> [2/5] Rendering animated Developer Title badge with blinking cursor..."
 python3 "$THEME_PACK/plymouth/generate_title.py" "$TITLE" "$THEME_PACK/plymouth"
 
-# 3. Plymouth Startup UI
-echo "==> [3/5] Installing QLED Maple Red Plymouth Theme (Developer Core + Offline Updates)..."
+# 3. Plymouth Startup UI (Maple Red maroon animation on black)
+echo "==> [3/5] Installing Maple Red Plymouth Theme (Developer Core + Update Handler)..."
 mkdir -p /usr/share/plymouth/themes/obsidian-amber
 cp -r "$THEME_PACK/plymouth/"* /usr/share/plymouth/themes/obsidian-amber/
 chmod 644 /usr/share/plymouth/themes/obsidian-amber/*
 chmod 755 /usr/share/plymouth/themes/obsidian-amber
 
-# Set default Plymouth theme and update initramfs
-echo "==> Updating initramfs with new splash theme..."
+# Force Plymouth to our theme (overriding any other theme that was set)
+echo "==> Setting Plymouth default to obsidian-amber..."
 plymouth-set-default-theme obsidian-amber -R
 
-# 4. GRUB Silent Boot & Theming (Maple Red to Black Gradient)
+# 4. GRUB Silent Boot with Maple Red Gradient Wallpaper
 echo "==> [4/5] Configuring GRUB with Maple Red Gradient Wallpaper..."
 mkdir -p /boot/grub/themes/obsidian-amber
 cp -r "$THEME_PACK/grub/"* /boot/grub/themes/obsidian-amber/
 
+# Clean /etc/default/grub completely: remove ALL previous theme entries and duplicates
 python3 -c "
 with open('/etc/default/grub', 'r') as f:
     lines = f.readlines()
 
 new_lines = []
 skip_keys = ['GRUB_CMDLINE_LINUX_DEFAULT', 'GRUB_THEME', 'GRUB_BACKGROUND', 'GRUB_GFXMODE', 'GRUB_TIMEOUT']
+skip_comments = ['Obsidian Amber', 'Maple Red', 'macOS Tahoe']
 for line in lines:
-    if any(line.strip().startswith(k + '=') for k in skip_keys):
+    stripped = line.strip()
+    # Skip our previous config lines and comments
+    if any(stripped.startswith(k + '=') for k in skip_keys):
         continue
+    if any(c in stripped for c in skip_comments):
+        continue
+    if stripped == '':
+        # Only keep one blank line at a time
+        if new_lines and new_lines[-1].strip() == '':
+            continue
     new_lines.append(line)
 
-new_lines.append('\n# Obsidian Amber & Maple Red Silent Boot Configuration\n')
+# Remove trailing blank lines
+while new_lines and new_lines[-1].strip() == '':
+    new_lines.pop()
+
+new_lines.append('\n\n# Obsidian Amber & Maple Red Silent Boot\n')
 new_lines.append('GRUB_CMDLINE_LINUX_DEFAULT=\"quiet splash loglevel=3 rd.udev.log_priority=3 vt.global_cursor_default=0 systemd.show_status=auto\"\n')
 new_lines.append('GRUB_THEME=\"/boot/grub/themes/obsidian-amber/theme.txt\"\n')
 new_lines.append('GRUB_BACKGROUND=\"/boot/grub/themes/obsidian-amber/background.png\"\n')
@@ -106,33 +120,26 @@ new_lines.append('GRUB_TIMEOUT=2\n')
 
 with open('/etc/default/grub', 'w') as f:
     f.writelines(new_lines)
+print('Cleaned and wrote /etc/default/grub')
 "
-
-# Also update desktop-base active grub wallpaper if linked
-if [ -d /usr/share/images/desktop-base ]; then
-  cp "$THEME_PACK/grub/background.png" /usr/share/images/desktop-base/desktop-grub.png 2>/dev/null || true
-fi
 
 echo "==> Regenerating GRUB bootloader configuration..."
 update-grub
 
-# 5. GDM Login Page Customization (Pinterest Wallpaper + Crimson Ruby Accent)
-echo "==> [5/5] Installing Custom GDM Login Screen (Pinterest Wallpaper & Crimson Ruby Accent)..."
+# 5. GDM Login Page (Pinterest wallpaper + Maroon accent)
+echo "==> [5/5] Installing GDM Login Screen (Maroon accent, Pinterest wallpaper)..."
 cp "$THEME_PACK/gdm/gnome-shell-theme.gresource" /usr/share/gnome-shell/gnome-shell-theme.gresource
 chmod 644 /usr/share/gnome-shell/gnome-shell-theme.gresource
 
-# Also place fallback wallpapers for desktop-base greeters
-if [ -d /usr/share/desktop-base/active-theme/login ]; then
-  magick "$THEME_PACK/wallpaper/login_background.png" -resize 1920x1080 /usr/share/desktop-base/active-theme/login/background.svg 2>/dev/null || true
-fi
-
 echo "============================================================"
-echo " ALL DONE! Startup UI, Developer Splash & Login Installed!"
+echo " ALL DONE! Everything installed correctly."
 echo "============================================================"
-echo "Summary of applied changes:"
-echo " 1. GRUB Menu Wallpaper: Maple Red to Pure Black Gradient active"
-echo " 2. Power-on Animation: 180x180 Developer Core (>_ terminal prompt + HUD ring)"
-echo " 3. Developer Title Badge: \"$TITLE\" with animated blinking cursor"
-echo " 4. Offline Update Progress: System messages and update status visible"
-echo " 5. GDM Login Screen: Pinterest wallpaper + matching Crimson Ruby accent"
+echo ""
+echo " GRUB:     Maple Red gradient wallpaper, clean theme (no missing = error)"
+echo " Plymouth: Maple Red developer animation with '$TITLE'"
+echo "           Update text handler enabled (SetUpdateStatusFunction)"
+echo " Login:    Pinterest wallpaper + Maroon (#9b111e) accent buttons"
+echo " Desktop:  Orange accent preserved (MacTahoe-Dark-orange GTK theme)"
+echo ""
+echo " Reboot to see all changes take effect."
 echo "============================================================"
