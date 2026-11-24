@@ -1,7 +1,7 @@
 # macOS Tahoe Desktop & System UI Suite
-### Complete macOS Tahoe Theming for Debian / GNOME (GTK4/Nautilus, GDM, GRUB & Plymouth)
+### Complete macOS Tahoe Theming for Debian or Arch Linux / GNOME (GTK4/Nautilus, GDM, GRUB & Plymouth)
 
-A complete, automated customization suite designed for **Debian / GNOME** implementing the authentic macOS Tahoe look and feel.
+A complete, automated customization suite for **Debian/Ubuntu and Arch Linux with GNOME**, implementing the macOS Tahoe look and feel.
 
 Theme and icon foundations:
 - **MacTahoe GTK Theme**: [vinceliuice/MacTahoe-gtk-theme](https://github.com/vinceliuice/MacTahoe-gtk-theme)
@@ -25,6 +25,17 @@ Theme and icon foundations:
 
 ## 🚀 Installation & Usage
 
+### Arch Linux prerequisites
+Install and configure GNOME/GDM, GRUB, Plymouth, and the utilities used by the scripts before running the installer:
+```bash
+sudo pacman -S --needed git grub plymouth mkinitcpio python imagemagick dconf gnome-shell gdm
+```
+In `/etc/mkinitcpio.conf`, add `plymouth` to the `HOOKS` array immediately after `udev`, preserving your existing hooks and their order. Then regenerate initramfs:
+```bash
+sudo mkinitcpio -P
+```
+Make sure GRUB is installed and `/etc/default/grub` exists. The setup script generates `/boot/grub/grub.cfg` with `grub-mkconfig` on Arch; Debian/Ubuntu continue to use `update-grub`.
+
 ### 1. Apply Desktop Environment & Nautilus UI (User-Level, No Root Needed)
 ```bash
 ./apply_desktop_theme.sh
@@ -42,8 +53,8 @@ sudo ./setup_startup_and_login.sh
 ./install_all.sh
 ```
 
-### 4. Restore Factory Settings
-If you ever want to revert GRUB, Plymouth and GDM back to Debian defaults:
+### 4. Restore Previous Settings
+If you ever want to revert GRUB, Plymouth and GDM to their saved prior settings:
 ```bash
 sudo ./setup_startup_and_login.sh --restore
 ```

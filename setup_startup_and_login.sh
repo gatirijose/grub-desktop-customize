@@ -7,6 +7,7 @@ set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEME_PACK="$DIR/theme_pack"
+PLYMOUTH_THEME_BACKUP="/etc/default/plymouth-theme.bak"
 
 # Auto-elevate to root if not already root
 if [ "$EUID" -ne 0 ]; then
@@ -14,19 +15,76 @@ if [ "$EUID" -ne 0 ]; then
   exec sudo "$0" "$@"
 fi
 
+if [ ! -r /etc/os-release ]; then
+  echo "ERROR: Cannot identify this Linux distribution (/etc/os-release is missing)." >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+. /etc/os-release
+
+if [ "${ID:-}" = "arch" ] || [[ " ${ID_LIKE:-} " == *" arch "* ]]; then
+  DISTRO_FAMILY="arch"
+  GRUB_CONFIG_GENERATOR="grub-mkconfig"
+  GRUB_CONFIG_PATH="/boot/grub/grub.cfg"
+elif [ "${ID:-}" = "debian" ] || [ "${ID:-}" = "ubuntu" ] || [[ " ${ID_LIKE:-} " == *" debian "* ]]; then
+  DISTRO_FAMILY="debian"
+  GRUB_CONFIG_GENERATOR="update-grub"
+else
+  echo "ERROR: This script supports Arch Linux and Debian/Ubuntu systems only." >&2
+  echo "Detected distribution: ${PRETTY_NAME:-${ID:-unknown}}" >&2
+  exit 1
+fi
+
+regenerate_grub_config() {
+  if [ "$DISTRO_FAMILY" = "arch" ]; then
+    "$GRUB_CONFIG_GENERATOR" -o "$GRUB_CONFIG_PATH"
+  else
+    "$GRUB_CONFIG_GENERATOR"
+  fi
+}
+
 # Check for restore option
 if [ "$1" = "--restore" ]; then
   echo "==> Restoring system defaults from backups..."
   if [ -f /etc/default/grub.bak ]; then
     cp /etc/default/grub.bak /etc/default/grub
-    update-grub
+    regenerate_grub_config
   fi
   if [ -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak ]; then
     cp /usr/share/gnome-shell/gnome-shell-theme.gresource.bak /usr/share/gnome-shell/gnome-shell-theme.gresource
   fi
-  plymouth-set-default-theme debian-theme -R 2>/dev/null || true
+  if [ -s "$PLYMOUTH_THEME_BACKUP" ]; then
+    plymouth-set-default-theme "$(cat "$PLYMOUTH_THEME_BACKUP")" -R
+  else
+    echo "NOTE: No saved Plymouth theme was found; leaving the current theme unchanged."
+  fi
   echo "==> Restored factory settings."
   exit 0
+fi
+
+for command_name in python3 plymouth-set-default-theme "$GRUB_CONFIG_GENERATOR"; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "ERROR: Required command '$command_name' is not installed." >&2
+    exit 1
+  fi
+done
+
+if [ ! -f /etc/default/grub ] || [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource ]; then
+  echo "ERROR: GRUB and GNOME Shell system files were not found." >&2
+  echo "Install and configure GRUB and GNOME Shell before running this script." >&2
+  exit 1
+fi
+
+if [ "$DISTRO_FAMILY" = "arch" ]; then
+  if ! command -v mkinitcpio >/dev/null 2>&1; then
+    echo "ERROR: Required command 'mkinitcpio' is not installed." >&2
+    exit 1
+  fi
+  if [ ! -f /etc/mkinitcpio.conf ] || ! grep -Eq '^[[:space:]]*HOOKS=.*([[:space:]]|")plymouth([[:space:]]|")' /etc/mkinitcpio.conf; then
+    echo "ERROR: Arch Linux needs the 'plymouth' hook in /etc/mkinitcpio.conf." >&2
+    echo "Add it to HOOKS (after udev), then run this script again." >&2
+    exit 1
+  fi
 fi
 
 # Parse Developer Title parameter
@@ -65,6 +123,15 @@ echo "============================================================"
 echo "==> [1/5] Creating backups of current configuration..."
 [ ! -f /etc/default/grub.bak ] && cp /etc/default/grub /etc/default/grub.bak
 [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak ] && cp /usr/share/gnome-shell/gnome-shell-theme.gresource /usr/share/gnome-shell/gnome-shell-theme.gresource.bak
+if [ ! -f "$PLYMOUTH_THEME_BACKUP" ]; then
+  ORIGINAL_PLYMOUTH_THEME="$(plymouth-set-default-theme)"
+  if [ -n "$ORIGINAL_PLYMOUTH_THEME" ]; then
+    printf '%s\n' "$ORIGINAL_PLYMOUTH_THEME" > "$PLYMOUTH_THEME_BACKUP"
+  else
+    echo "ERROR: Could not determine the current Plymouth theme; refusing to continue." >&2
+    exit 1
+  fi
+fi
 
 # 2. Generate Developer Animation Frames
 echo "==> [2/5] Rendering animated Developer Title badge with blinking cursor..."
@@ -124,7 +191,7 @@ print('Cleaned and wrote /etc/default/grub')
 "
 
 echo "==> Regenerating GRUB bootloader configuration..."
-update-grub
+regenerate_grub_config
 
 # 5. GDM Login Page (Pinterest wallpaper + Maroon accent)
 echo "==> [5/5] Installing GDM Login Screen (Maroon accent, Pinterest wallpaper)..."
