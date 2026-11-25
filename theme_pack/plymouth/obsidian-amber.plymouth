@@ -1,6 +1,6 @@
 [Plymouth Theme]
-Name=Obsidian Amber MacOS Boot
-Description=Sleek silent boot theme matching the Obsidian Amber wallpaper
+Name=Maple Developer Splash
+Description=Animated developer spinner with personalized title and boot messages
 ModuleName=script
 
 [script]

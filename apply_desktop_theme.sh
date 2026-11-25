@@ -58,24 +58,29 @@ fi
 # 1. Verify / Install MacTahoe GTK Theme (Orange variant, standard/normal colors)
 # ------------------------------------------------------------------------------
 GTK_THEME_NAME="MacTahoe-Dark-orange"
+GTK_THEME_LIGHT_NAME="MacTahoe-Light-orange"
 GTK_THEME_DIR=""
-for candidate in "/usr/share/themes/$GTK_THEME_NAME" "$HOME/.themes/$GTK_THEME_NAME" "$HOME/.local/share/themes/$GTK_THEME_NAME" "$THEME_PACK/themes/$GTK_THEME_NAME"; do
-  if [ -d "$candidate" ]; then
-    GTK_THEME_DIR="$candidate"
-    break
+GTK_THEME_LIGHT_DIR=""
+for theme_root in /usr/share/themes "$HOME/.themes" "$HOME/.local/share/themes" "$THEME_PACK/themes"; do
+  if [ -z "$GTK_THEME_DIR" ] && [ -d "$theme_root/$GTK_THEME_NAME" ]; then
+    GTK_THEME_DIR="$theme_root/$GTK_THEME_NAME"
+  fi
+  if [ -z "$GTK_THEME_LIGHT_DIR" ] && [ -d "$theme_root/$GTK_THEME_LIGHT_NAME" ]; then
+    GTK_THEME_LIGHT_DIR="$theme_root/$GTK_THEME_LIGHT_NAME"
   fi
 done
 
-if [ -n "$GTK_THEME_DIR" ]; then
-  echo "==> [1/6] Found included MacTahoe GTK theme at: $GTK_THEME_DIR (skipping clone)"
+if [ -n "$GTK_THEME_DIR" ] && [ -n "$GTK_THEME_LIGHT_DIR" ]; then
+  echo "==> [1/6] Found MacTahoe light and dark orange themes."
 else
-  echo "==> [1/6] MacTahoe GTK theme not included locally. Cloning repository..."
+  echo "==> [1/6] Installing MacTahoe light and dark orange themes..."
   CLONE_DIR=$(mktemp -d)
   git clone --depth=1 https://github.com/vinceliuice/MacTahoe-gtk-theme.git "$CLONE_DIR"
   mkdir -p "$HOME/.themes"
-  bash "$CLONE_DIR/install.sh" -d "$HOME/.themes" -c dark -t orange
+  bash "$CLONE_DIR/install.sh" -d "$HOME/.themes" -c dark -c light -t orange
   rm -rf "$CLONE_DIR"
   GTK_THEME_DIR="$HOME/.themes/$GTK_THEME_NAME"
+  GTK_THEME_LIGHT_DIR="$HOME/.themes/$GTK_THEME_LIGHT_NAME"
 fi
 
 # ------------------------------------------------------------------------------

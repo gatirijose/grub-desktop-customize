@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Obsidian Amber & Maple Red - Startup UI, Silent Boot & Login Page Setup
-# QLED-Optimized: Maple Red Power Splash & Developer Terminal Animation
+# Maple Developer Splash, GRUB, and GDM Login Setup
+# Developer Plymouth Splash, Maple GRUB Theme, and GDM Login Setup
 # ==============================================================================
 set -e
 
@@ -50,9 +50,64 @@ regenerate_grub_config() {
   fi
 }
 
+ensure_kernel_args() {
+  local file="$1"
+  local mode="$2"
+  [ -f "$file" ] || return 0
+  [ -f "$file.bak" ] || cp "$file" "$file.bak"
+  python3 - "$file" "$mode" <<'PY'
+from pathlib import Path
+import shlex
+import sys
+
+path = Path(sys.argv[1])
+mode = sys.argv[2]
+text = path.read_text()
+args = ("quiet", "splash")
+
+if mode == "cmdline":
+    tokens = shlex.split(text)
+    missing = [arg for arg in args if arg not in tokens]
+    if missing:
+        path.write_text(text.rstrip() + " " + " ".join(missing) + "\n")
+else:
+    lines = text.splitlines(keepends=True)
+    changed = False
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith("options "):
+            tokens = shlex.split(line)
+            missing = [arg for arg in args if arg not in tokens]
+            if missing:
+                lines[index] = line.rstrip("\n") + " " + " ".join(missing) + "\n"
+                changed = True
+    if changed:
+        path.write_text("".join(lines))
+PY
+}
+
+restore_systemd_boot_configs() {
+  python3 - <<'PY'
+from pathlib import Path
+import shutil
+
+backups = [Path('/etc/kernel/cmdline.bak')]
+for directory in (Path('/boot/loader/entries'), Path('/efi/loader/entries'), Path('/boot/EFI/loader/entries')):
+    if directory.is_dir():
+        backups.extend(directory.glob('*.conf.bak'))
+for backup in backups:
+    if backup.is_file():
+        original = Path(str(backup)[:-4])
+        shutil.copy2(backup, original)
+PY
+}
+
 # Check for restore option
 if [ "$1" = "--restore" ]; then
   echo "==> Restoring system defaults from backups..."
+  restore_systemd_boot_configs
+  if [ -f /etc/mkinitcpio.conf.bak ]; then
+    cp /etc/mkinitcpio.conf.bak /etc/mkinitcpio.conf
+  fi
   if [ -f /etc/default/grub.bak ]; then
     cp /etc/default/grub.bak /etc/default/grub
     regenerate_grub_config
@@ -64,6 +119,9 @@ if [ "$1" = "--restore" ]; then
     plymouth-set-default-theme "$(cat "$PLYMOUTH_THEME_BACKUP")" -R
   else
     echo "NOTE: No saved Plymouth theme was found; leaving the current theme unchanged."
+  fi
+  if [ "$DISTRO_FAMILY" = "arch" ]; then
+    mkinitcpio -P
   fi
   echo "==> Restored factory settings."
   exit 0
@@ -108,9 +166,11 @@ lines = text.splitlines()
 for i, line in enumerate(lines):
     if re.match(r'^\s*HOOKS=', line) and not re.search(r'\bplymouth\b', line):
         if ' udev ' in f' {line} ':
-            line = line.replace(' udev ', ' udev plymouth ', 1)
+          line = line.replace(' udev ', ' udev plymouth ', 1)
+        elif 'systemd' in line and re.search(r'\bsystemd\b', line):
+          line = re.sub(r'\bsystemd\b', 'systemd plymouth', line, count=1)
         elif 'udev ' in line:
-            line = line.replace('udev ', 'udev plymouth ', 1)
+          line = line.replace('udev ', 'udev plymouth ', 1)
         elif 'base ' in line:
             line = line.replace('base ', 'base plymouth ', 1)
         else:
@@ -128,40 +188,12 @@ PY
   fi
 fi
 
-# Parse Developer Title parameter
-TITLE=""
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -t|--title)
-      TITLE="$2"
-      shift 2
-      ;;
-    *)
-      shift
-      ;;
-  esac
-done
-
-if [ -z "$TITLE" ]; then
-  if [ -t 0 ]; then
-    echo ""
-    echo "============================================================"
-    echo "  SOFTWARE DEVELOPER SPLASH CUSTOMIZATION"
-    echo "============================================================"
-    read -p "Enter Developer Title for power-on splash [Default: JOSEPH // SOFTWARE DEVELOPER]: " INPUT_TITLE
-    TITLE="${INPUT_TITLE:-JOSEPH // SOFTWARE DEVELOPER}"
-  else
-    TITLE="JOSEPH // SOFTWARE DEVELOPER"
-  fi
-fi
-
 echo "============================================================"
 echo " Starting System Startup UI & Login Page Customization"
-echo " Developer Title: $TITLE"
 echo "============================================================"
 
 # 1. Backups (only once, never overwrite existing backup)
-echo "==> [1/5] Creating backups of current configuration..."
+echo "==> [1/4] Creating backups of current configuration..."
 [ ! -f /etc/default/grub.bak ] && cp /etc/default/grub /etc/default/grub.bak
 [ ! -f /usr/share/gnome-shell/gnome-shell-theme.gresource.bak ] && cp /usr/share/gnome-shell/gnome-shell-theme.gresource /usr/share/gnome-shell/gnome-shell-theme.gresource.bak
 if [ ! -f "$PLYMOUTH_THEME_BACKUP" ]; then
@@ -174,28 +206,47 @@ if [ ! -f "$PLYMOUTH_THEME_BACKUP" ]; then
   fi
 fi
 
-# 2. Generate Developer Animation Frames
-echo "==> [2/5] Rendering animated Developer Title badge with blinking cursor..."
-python3 "$THEME_PACK/plymouth/generate_title.py" "$TITLE" "$THEME_PACK/plymouth"
-
-# 3. Plymouth Startup UI (Maple Red maroon animation on black)
-echo "==> [3/5] Installing Maple Red Plymouth Theme (Developer Core + Update Handler)..."
+# 2. Plymouth Startup UI (developer spinner and personalized title)
+echo "==> [2/4] Installing the Maple developer Plymouth splash..."
 mkdir -p /usr/share/plymouth/themes/obsidian-amber
 cp -r "$THEME_PACK/plymouth/"* /usr/share/plymouth/themes/obsidian-amber/
 chmod 644 /usr/share/plymouth/themes/obsidian-amber/*
 chmod 755 /usr/share/plymouth/themes/obsidian-amber
 
-# Force Plymouth to our theme (overriding any other theme that was set)
+# Keep the bundled name frames intact and select the developer spinner theme.
 echo "==> Setting Plymouth default to obsidian-amber..."
 plymouth-set-default-theme obsidian-amber -R
 
 if [ "$DISTRO_FAMILY" = "arch" ]; then
+  if command -v bootctl >/dev/null 2>&1 && bootctl status 2>/dev/null | grep -q 'Product: systemd-boot'; then
+    echo "==> Adding Plymouth boot arguments for systemd-boot..."
+    UPDATED_BOOT_CONFIG=0
+    if [ -f /etc/kernel/cmdline ]; then
+      ensure_kernel_args /etc/kernel/cmdline cmdline
+      UPDATED_BOOT_CONFIG=1
+    fi
+    for entries_dir in /boot/loader/entries /efi/loader/entries /boot/EFI/loader/entries; do
+      if [ -d "$entries_dir" ]; then
+        while IFS= read -r -d '' entry; do
+          if grep -q '^[[:space:]]*options ' "$entry"; then
+            ensure_kernel_args "$entry" entry
+            UPDATED_BOOT_CONFIG=1
+          fi
+        done < <(find "$entries_dir" -maxdepth 1 -type f -name '*.conf' -print0)
+      fi
+    done
+    if [ "$UPDATED_BOOT_CONFIG" -eq 0 ]; then
+      echo "ERROR: systemd-boot is active, but no /etc/kernel/cmdline or editable loader entry was found." >&2
+      echo "Add 'quiet splash' to the command line used to build your UKI, then rerun mkinitcpio -P." >&2
+      exit 1
+    fi
+  fi
   echo "==> Regenerating Arch Linux initramfs with mkinitcpio..."
   mkinitcpio -P
 fi
 
-# 4. GRUB Silent Boot with Maple Red Gradient Wallpaper
-echo "==> [4/5] Configuring GRUB with Maple Red Gradient Wallpaper..."
+# 4. GRUB Silent Boot with Maple Theme
+echo "==> [3/4] Configuring GRUB with the Maple theme..."
 mkdir -p /boot/grub/themes/obsidian-amber
 cp -r "$THEME_PACK/grub/"* /boot/grub/themes/obsidian-amber/
 
@@ -239,8 +290,8 @@ print('Cleaned and wrote /etc/default/grub')
 echo "==> Regenerating GRUB bootloader configuration..."
 regenerate_grub_config
 
-# 5. GDM Login Page (Pinterest wallpaper + Maroon accent)
-echo "==> [5/5] Installing GDM Login Screen (Maroon accent, Pinterest wallpaper)..."
+# 5. GDM Login Page (solid maple background)
+echo "==> [4/4] Installing GDM Login Screen (solid maple background)..."
 cp "$THEME_PACK/gdm/gnome-shell-theme.gresource" /usr/share/gnome-shell/gnome-shell-theme.gresource
 chmod 644 /usr/share/gnome-shell/gnome-shell-theme.gresource
 
@@ -248,11 +299,10 @@ echo "============================================================"
 echo " ALL DONE! Everything installed correctly."
 echo "============================================================"
 echo ""
-echo " GRUB:     Maple Red gradient wallpaper, clean theme (no missing = error)"
-echo " Plymouth: Maple Red developer animation with '$TITLE'"
-echo "           Update text handler enabled (SetUpdateStatusFunction)"
-echo " Login:    Pinterest wallpaper + Maroon (#9b111e) accent buttons"
-echo " Desktop:  Orange accent preserved (MacTahoe-Dark-orange GTK theme)"
+echo " GRUB:     Maple theme with centered boot menu"
+echo " Plymouth: Maple developer spinner with personalized title"
+echo " Login:    Solid maple background with themed controls"
+echo " Desktop:  MacTahoe light/dark themes with orange accent"
 echo ""
 echo " Reboot to see all changes take effect."
 echo "============================================================"
